@@ -1,9 +1,9 @@
-# 🫁 SaansSafe: can the kids go outside today?
+# SaansSafe: can the kids go outside today?
 
 **Outdoor safety for Indian schools on bad-air and heatwave days.**
 Type a school's location and SaansSafe turns live air-quality and heat forecasts into a clear verdict for each part of the school day (morning assembly, recess, PE and dismissal), plus a WhatsApp-ready notice for parents in English and Hindi.
 
-**🔗 Live demo: https://saanssafe.onrender.com** (free tier, so the first load can take ~30 s while it wakes up)
+**Live demo: https://saanssafe.onrender.com** (free tier, so the first load can take ~30 s while it wakes up)
 
 > Tracks: **Air** (school safety on bad days, pollution exposure) · **Heat and Water** (heatwaves)
 > AWS: the advisor agent is built on the **AWS open-source [Strands Agents SDK](https://github.com/strands-agents/sdk-python)**.
@@ -18,18 +18,18 @@ Today the decision ("do we hold assembly outside? cancel PE? let the asthmatic k
 
 ## What SaansSafe does
 
-| | |
+| Feature | What it does |
 |---|---|
-| 📍 **Any school in India** | Search a school, locality or city (OpenStreetMap), or use GPS. |
-| 🇮🇳 **Indian standards** | AQI on India's **CPCB National AQI** scale (hourly PM2.5 / PM10), so numbers match Indian news, SAMEER and SAFAR. Heat alerts use the **IMD colour code** (Green / Yellow / Orange / Red). |
-| 🕖 **Judged on school hours** | Each activity is checked against its own time window (assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15). |
-| 🌡️ **Air + heat together** | The verdict is the worse of air risk and heat-stress risk ("feels like" temperature), and each card says which one is driving it. |
-| 🚦 **Five plain verdicts** | Go · Go with care · Limit · Move indoors · Stay home, each with a concrete instruction. |
-| 🫁 **Asthma mode** | Stricter thresholds for sensitive children. Strenuous PE always steps up one level. |
-| 📅 **4-day outlook** | Plan sports day or a field trip ahead of time. |
-| 📲 **Parent circular** | A ready-to-forward message for the parents' WhatsApp group in English or Hindi: what the conditions are, what the school will do, what to send with the child (water, cap, N95 mask, inhaler) and when to keep them home. Dated DD-MM-YYYY and signed with the school's name. |
-| 🤖 **Ask the advisor** | A Strands agent answers free-form questions ("Can we hold the football match tomorrow at 11?") in English or Hindi, after calling tools for live data. |
-| 🌐 **Bilingual UI** | Full English / हिंदी toggle. Works on a basic phone browser; no login, no install. |
+| **Any school in India** | Search a school, locality or city (OpenStreetMap), or use GPS. |
+| **Indian standards** | AQI on India's **CPCB National AQI** scale (hourly PM2.5 / PM10), so numbers match Indian news, SAMEER and SAFAR. Heat alerts use the **IMD colour code** (Green / Yellow / Orange / Red). |
+| **Judged on school hours** | Each activity is checked against its own time window (assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15). |
+| **Air + heat together** | The verdict is the worse of air risk and heat-stress risk ("feels like" temperature), and each card says which one is driving it. |
+| **Five plain verdicts** | Go · Go with care · Limit · Move indoors · Stay home, each with a concrete instruction. |
+| **Asthma mode** | Stricter thresholds for sensitive children. Strenuous PE always steps up one level. |
+| **4-day outlook** | Plan sports day or a field trip ahead of time. |
+| **Parent circular** | A ready-to-forward message for the parents' WhatsApp group in English or Hindi: what the conditions are, what the school will do, what to send with the child (water, cap, N95 mask, inhaler) and when to keep them home. Dated DD-MM-YYYY and signed with the school's name. |
+| **Ask the advisor** | A Strands agent answers free-form questions ("Can we hold the football match tomorrow at 11?") in English or Hindi, after calling tools for live data. |
+| **Bilingual UI** | Full English / हिंदी toggle. Works on a basic phone browser; no login, no install. |
 
 The dashboard is **fully deterministic and works without any AI key**. The agent is an extra layer on top that never invents numbers.
 

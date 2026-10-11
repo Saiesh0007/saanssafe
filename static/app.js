@@ -118,16 +118,17 @@ function render() {
 
   const lv = d.overall_level;
   $("#banner").className = `verdict-panel tilt lv${lv}`;
-  $("#banner").innerHTML = `<div class="ring">${ring(d.peak_aqi / 500)}<div class="val"><b data-count="${d.peak_aqi}">0</b><span>AQI</span></div></div>
+  $("#banner").innerHTML = `<div class="ring">${ring(d.peak_aqi / 500)}<div class="val"><b data-count="${d.peak_aqi}">0</b><span>${t("Peak AQI", "अधिकतम AQI")}</span><span class="hrs">${t("7 am - 3 pm", "सुबह 7 - दोप. 3")}</span></div></div>
     <div><div class="kicker">${esc(state.lang === "hi" ? d.overall_hi : d.overall)} · ${dayLabel(state.day, d.date)}</div>
     <div class="big">${HEADLINE[state.lang][lv]}</div>
-    <div class="small">${reasonLine(d)}</div></div>`;
+    <div class="small">${reasonLine(d)}</div>${nowLine(r, d)}</div>`;
+  renderScale(lv);
   requestAnimationFrame(() => { const fg = $("#banner .fg"); if (fg) fg.style.strokeDashoffset = fg.dataset.to; });
 
   const heatPct = Math.max(0, Math.min(1, (d.peak_feels_like - 20) / 35));
-  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (CPCB)", "अधिकतम AQI (CPCB)")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${t(d.aqi_category, d.aqi_category_hi)}</div>
+  $("#statAir").innerHTML = `<div class="k">${t("AQI · school hours (CPCB)", "AQI · स्कूल समय (CPCB)")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${t(d.aqi_category, d.aqi_category_hi)}</div>
     <div class="bar"><i style="background:${aqiColor(d.peak_aqi)}" data-w="${Math.min(100, d.peak_aqi / 5)}"></i></div>`;
-  $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${t(d.heat_category, d.heat_category_hi)}</div>
+  $("#statHeat").innerHTML = `<div class="k">${t("Feels like · school hours", "महसूस तापमान · स्कूल समय")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${t(d.heat_category, d.heat_category_hi)}</div>
     <div class="bar"><i style="background:linear-gradient(90deg,#facc15,#f97316,#ef4444)" data-w="${heatPct * 100}"></i></div>`;
   $("#statUv").innerHTML = `<div class="k">${t("Max UV", "अधिकतम UV")}</div><div class="v" data-count="${Math.round(d.max_uv)}">0</div><div class="c">${d.max_uv >= 8 ? t("Very high", "बहुत अधिक") : d.max_uv >= 6 ? t("High", "अधिक") : t("Moderate/low", "मध्यम/कम")}</div>
     <div class="bar"><i style="background:linear-gradient(90deg,#a3e635,#facc15,#a21caf)" data-w="${Math.min(100, d.max_uv * 9)}"></i></div>`;
@@ -157,6 +158,20 @@ function reasonLine(d) {
   return worst.driver === "heat"
     ? t(`Driven by heat: feels like ${d.peak_feels_like}°C ${hours}`, `कारण: गर्मी - ${hours} महसूस तापमान ${d.peak_feels_like}°C`)
     : t(`Driven by air: AQI up to ${d.peak_aqi} ${hours}`, `कारण: हवा - ${hours} AQI ${d.peak_aqi} तक`);
+}
+
+// The current hour's AQI on the "Today" tab, so it's clear the ring is a school-hours peak.
+function nowLine(r, d) {
+  if (state.day !== 0) return "";
+  const hr = +r.generated_at.slice(11, 13);
+  const h = d.hourly.find((x) => x.hour === hr);
+  if (!h) return "";
+  return `<div class="now"><i style="background:${aqiColor(h.aqi)}"></i>${t("Right now", "अभी")}: AQI ${h.aqi} · ${h.feels_like}°C</div>`;
+}
+
+const SCALE = { en: ["Go", "Go with care", "Limit", "Move indoors", "Stay home"], hi: ["ठीक है", "सावधानी से", "सीमित करें", "अंदर ही रखें", "घर पर रहें"] };
+function renderScale(lv) {
+  $("#scale").innerHTML = SCALE[state.lang].map((name, i) => `<span class="s${i}${i === lv ? " on" : ""}">${name}</span>`).join("");
 }
 
 // SVG ring gauge; the foreground stroke animates from empty to `frac`.
@@ -205,7 +220,10 @@ function renderNotice() {
   const school = $("#schoolName").value.trim();
   let text = state.report.notices[state.day][state.noticeLang];
   if (school) text = text.replace(/(Principal|प्रधानाचार्य)$/, `$1\n${school}`);
-  $("#notice").textContent = text;
+  state.noticeText = text;
+  $("#notice").innerHTML = esc(text).replace(/\*([^*\n]+)\*/g, "<b>$1</b>");
+  const now = new Date();
+  $("#stamp").textContent = now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
   $("#waBtn").href = "https://wa.me/?text=" + encodeURIComponent(text);
   document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.nl === state.noticeLang));
 }
@@ -259,7 +277,7 @@ document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("clic
 $("#schoolName").value = localGet("school") || "";
 $("#schoolName").addEventListener("input", () => { localSet("school", $("#schoolName").value); if (state.report) renderNotice(); });
 $("#copyBtn").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText($("#notice").textContent); $("#copyBtn").textContent = "✓"; setTimeout(applyLang, 1200); } catch {}
+  try { await navigator.clipboard.writeText(state.noticeText); $("#copyBtn").textContent = "✓"; setTimeout(applyLang, 1200); } catch {}
 });
 $("#langBtn").addEventListener("click", () => { state.lang = state.lang === "en" ? "hi" : "en"; state.noticeLang = state.lang; localSet("lang", state.lang); applyLang(); });
 

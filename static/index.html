@@ -6,7 +6,12 @@
 <title>SaansSafe · School safety on bad-air & heat days</title>
 <meta name="description" content="Can the kids go out today? Indian AQI + heat stress turned into clear decisions for assembly, recess, PE and dismissal.">
 <meta name="theme-color" content="#07131c">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫁</text></svg>">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta property="og:title" content="SaansSafe: can the kids go outside today?">
+<meta property="og:description" content="Air quality and heat for your school, turned into a clear yes or no for assembly, recess, PE and the walk home.">
+<meta property="og:image" content="/static/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
@@ -17,7 +22,7 @@
 
 <header class="top">
   <a class="brand" href="/" aria-label="SaansSafe home">
-    <span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/><path d="M8 18c3-6 13-6 16 0M10 22c3-3 9-3 12 0M12 14c2-3 6-3 8 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+    <span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="url(#lg)"/><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0369a1"/></linearGradient></defs><g fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 24h25a7 7 0 1 0-7-7"/><path d="M12 34h33a7 7 0 1 1-7 7"/><path d="M12 44h14"/></g></svg></span>
     <b>SaansSafe</b>
   </a>
   <button id="langBtn" class="glass pillbtn" aria-label="Switch language">हिंदी</button>
@@ -25,6 +30,7 @@
 
 <main>
   <section class="hero" id="hero">
+   <div class="hero-copy">
     <p class="eyebrow reveal" data-en="Air quality + heat · for every school in India" data-hi="वायु गुणवत्ता + गर्मी · भारत के हर स्कूल के लिए">Air quality + heat · for every school in India</p>
     <h1 class="reveal" data-en="Can the kids go outside today?" data-hi="क्या आज बच्चे बाहर जा सकते हैं?">Can the kids go outside today?</h1>
     <p class="sub reveal" data-en="A clear yes or no for assembly, recess, PE and the walk home, from live air-quality and heat forecasts for your school."
@@ -37,11 +43,29 @@
       <ul id="suggest" class="suggest glass" hidden></ul>
     </form>
     <div class="row reveal">
-      <button id="geoBtn" class="glass pillbtn" type="button" data-en="📍 Use my location" data-hi="📍 मेरी लोकेशन">📍 Use my location</button>
+      <button id="geoBtn" class="glass pillbtn" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.5" fill="currentColor"/></svg><span data-en="Use my location" data-hi="मेरी लोकेशन">Use my location</span></button>
       <label class="switch"><input id="sensitive" type="checkbox"><span class="track"><span class="knob"></span></span><span data-en="Plan for children with asthma" data-hi="अस्थमा वाले बच्चों के लिए">Plan for children with asthma</span></label>
     </div>
     <div class="chips reveal" id="chips"></div>
+   </div>
 
+   <aside class="preview reveal" aria-label="Example result">
+    <div class="pv-head">
+      <span class="pv-tag" data-en="Example" data-hi="उदाहरण">Example</span>
+      <span class="pv-place">Anand Vihar, Delhi · <span data-en="Tomorrow" data-hi="कल">Tomorrow</span></span>
+    </div>
+    <div class="pv-verdict lv3">
+      <div class="pv-aqi"><b>312</b><span>AQI</span></div>
+      <div><div class="pv-k" data-en="Very Poor air" data-hi="बहुत खराब हवा">Very Poor air</div><div class="pv-big" data-en="Move outdoor exertion indoors" data-hi="मेहनत वाली गतिविधि अंदर करें">Move outdoor exertion indoors</div></div>
+    </div>
+    <ul class="pv-list">
+      <li><i class="d2"></i><span data-en="Morning assembly" data-hi="प्रार्थना सभा">Morning assembly</span><b class="t3" data-en="Move indoors" data-hi="अंदर ही रखें">Move indoors</b></li>
+      <li><i class="d2"></i><span data-en="Recess" data-hi="मध्यावकाश">Recess</span><b class="t3" data-en="Move indoors" data-hi="अंदर ही रखें">Move indoors</b></li>
+      <li><i class="d3"></i><span data-en="PE & sports" data-hi="पीटी / खेल">PE &amp; sports</span><b class="t3" data-en="Move indoors" data-hi="अंदर ही रखें">Move indoors</b></li>
+      <li><i class="d1"></i><span data-en="Dismissal" data-hi="छुट्टी">Dismissal</span><b class="t2" data-en="Limit" data-hi="सीमित करें">Limit</b></li>
+    </ul>
+    <div class="pv-foot"><span class="wa-dot"></span><span data-en="Parent circular ready to share on WhatsApp" data-hi="अभिभावक सूचना WhatsApp के लिए तैयार">Parent circular ready to share on WhatsApp</span></div>
+   </aside>
   </section>
 
   <section id="result" hidden>
@@ -54,6 +78,7 @@
     </div>
 
     <div class="verdict-panel tilt" id="banner"></div>
+    <div class="scale" id="scale" aria-label="Verdict scale"></div>
 
     <div class="stats">
       <div class="stat glass tilt" id="statAir"></div>
@@ -71,16 +96,21 @@
 
     <div class="two">
       <div class="glass panel">
-        <h3 data-en="What to do" data-hi="क्या करें">What to do</h3>
+        <h3 data-en="For teachers & staff" data-hi="शिक्षकों और स्टाफ़ के लिए">For teachers &amp; staff</h3>
         <ul id="tips" class="tips"></ul>
       </div>
-      <div class="glass panel">
+      <div class="glass panel circular">
         <div class="noticehead">
-          <h3 data-en="Notice for parents" data-hi="अभिभावकों के लिए सूचना">Notice for parents</h3>
+          <div>
+            <h3 data-en="Circular for parents" data-hi="अभिभावकों के लिए सूचना">Circular for parents</h3>
+            <p class="meta" data-en="Forward this to the class WhatsApp group." data-hi="इसे कक्षा के WhatsApp ग्रुप में भेजें।">Forward this to the class WhatsApp group.</p>
+          </div>
           <div class="seg"><button data-nl="en" class="on">EN</button><button data-nl="hi">हिं</button></div>
         </div>
-        <input id="schoolName" class="field" maxlength="80" placeholder="School name (optional, signs the notice)" aria-label="School name">
-        <pre id="notice" class="notice"></pre>
+        <input id="schoolName" class="field" maxlength="80" placeholder="School name (signs the circular)" aria-label="School name">
+        <div class="chat">
+          <div class="bubble"><div id="notice" class="notice"></div><span class="stamp" id="stamp"></span></div>
+        </div>
         <div class="row">
           <button id="copyBtn" class="glass pillbtn" data-en="Copy" data-hi="कॉपी">Copy</button>
           <a id="waBtn" class="primary wa" target="_blank" rel="noopener" data-en="Share on WhatsApp" data-hi="WhatsApp पर भेजें">Share on WhatsApp</a>
@@ -104,12 +134,12 @@
   <section class="how">
     <h2 data-en="How it decides" data-hi="यह कैसे तय करता है">How it decides</h2>
     <div class="steps">
-      <div class="step glass tilt reveal"><span class="num">01</span><b>Live forecast</b><p>Hourly PM2.5, PM10, temperature and humidity for your exact location (Open-Meteo / Copernicus CAMS).</p></div>
-      <div class="step glass tilt reveal"><span class="num">02</span><b>Indian AQI</b><p>India's official National AQI (CPCB), so numbers match Indian news, SAMEER and SAFAR.</p></div>
-      <div class="step glass tilt reveal"><span class="num">03</span><b>School hours only</b><p>Each activity is judged on its own window: assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15.</p></div>
-      <div class="step glass tilt reveal"><span class="num">04</span><b>Clear verdicts</b><p>Go · Go with care · Limit · Move indoors · Stay home. PE steps up a level; asthma mode is stricter.</p></div>
+      <div class="step glass tilt reveal"><span class="num">01</span><b data-en="Live forecast" data-hi="लाइव पूर्वानुमान">Live forecast</b><p data-en="Hourly PM2.5, PM10, temperature and humidity for your exact location (Open-Meteo / Copernicus CAMS)." data-hi="आपकी जगह के लिए हर घंटे का PM2.5, PM10, तापमान और नमी (Open-Meteo / Copernicus CAMS)।">Hourly PM2.5, PM10, temperature and humidity for your exact location (Open-Meteo / Copernicus CAMS).</p></div>
+      <div class="step glass tilt reveal"><span class="num">02</span><b data-en="Indian standards" data-hi="भारतीय मानक">Indian standards</b><p data-en="India's National AQI (CPCB) and IMD colour-coded heat alerts, so numbers match SAMEER, SAFAR and Indian news." data-hi="CPCB का राष्ट्रीय AQI और IMD की रंग-कोड गर्मी चेतावनी - SAMEER, SAFAR और समाचारों से मेल खाते आँकड़े।">India's National AQI (CPCB) and IMD colour-coded heat alerts, so numbers match SAMEER, SAFAR and Indian news.</p></div>
+      <div class="step glass tilt reveal"><span class="num">03</span><b data-en="School hours only" data-hi="सिर्फ़ स्कूल का समय">School hours only</b><p data-en="Each activity is judged on its own window: assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15." data-hi="हर गतिविधि अपने समय पर आँकी जाती है: प्रार्थना 7-9, मध्यावकाश 10-12, पीटी 9-14, छुट्टी 13-15।">Each activity is judged on its own window: assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15.</p></div>
+      <div class="step glass tilt reveal"><span class="num">04</span><b data-en="Clear verdicts" data-hi="साफ़ निर्णय">Clear verdicts</b><p data-en="Go · Go with care · Limit · Move indoors · Stay home. PE steps up a level; asthma mode is stricter." data-hi="ठीक है · सावधानी से · सीमित करें · अंदर ही रखें · घर पर रहें। पीटी एक स्तर सख़्त; अस्थमा मोड और सख़्त।">Go · Go with care · Limit · Move indoors · Stay home. PE steps up a level; asthma mode is stricter.</p></div>
     </div>
-    <p class="meta disclaimer">Guidance tool, not a medical or government order. Always follow your state's DoE / GRAP circulars.</p>
+    <p class="meta disclaimer" data-en="Guidance tool, not a medical or government order. Always follow your state's DoE / GRAP circulars." data-hi="यह मार्गदर्शन है, चिकित्सीय या सरकारी आदेश नहीं। हमेशा अपने राज्य के शिक्षा विभाग / GRAP परिपत्रों का पालन करें।">Guidance tool, not a medical or government order. Always follow your state's DoE / GRAP circulars.</p>
   </section>
 </main>
 
