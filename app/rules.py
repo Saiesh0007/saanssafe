@@ -33,15 +33,18 @@ AQI_BANDS = [
     (10_000, "Severe"),
 ]
 
-# Heat-stress bands on "feels like" temperature (deg C), adapted from the
-# NWS heat-index bands used in many Indian heat action plans.
+AQI_CATEGORY_HI = {
+    "Good": "अच्छा", "Satisfactory": "संतोषजनक", "Moderate": "मध्यम",
+    "Poor": "खराब", "Very Poor": "बहुत खराब", "Severe": "गंभीर",
+}
+
+# Heat alerts in IMD's colour code, applied to the "feels like" temperature (deg C)
+# so humid coastal heat counts too. Limits match heat_level() below.
 HEAT_BANDS = [
-    (27, "Comfortable"),
-    (32, "Warm"),
-    (41, "Caution"),
-    (47, "Extreme caution"),
-    (54, "Danger"),
-    (10_000, "Extreme danger"),
+    (32, "Green: no heat alert", "हरा: कोई चेतावनी नहीं"),
+    (41, "Yellow alert: be aware", "पीला अलर्ट: सतर्क रहें"),
+    (47, "Orange alert: be prepared", "नारंगी अलर्ट: तैयार रहें"),
+    (10_000, "Red alert: take action", "लाल अलर्ट: तुरंत कदम उठाएँ"),
 ]
 
 # Severity levels shared by air and heat, 0 (fine) .. 4 (stop)
@@ -73,8 +76,8 @@ def aqi_category(aqi: int) -> str:
     return next(name for limit, name in AQI_BANDS if aqi <= limit)
 
 
-def heat_category(feels_like: float) -> str:
-    return next(name for limit, name in HEAT_BANDS if feels_like < limit)
+def heat_category(feels_like: float, hindi: bool = False) -> str:
+    return next((hi if hindi else en) for limit, en, hi in HEAT_BANDS if feels_like < limit)
 
 
 def air_level(aqi: int, sensitive: bool) -> int:
@@ -161,20 +164,29 @@ def decide(hours: list[dict], sensitive: bool) -> list[dict]:
     return out
 
 
-def tips(aqi: int, feels_like: float) -> list[str]:
+def tips(aqi: int, feels_like: float) -> list[dict]:
+    """Advice for school staff, as {"en", "hi"} pairs."""
     t = []
     if aqi > 200:
-        t.append("Keep windows shut during peak traffic hours (8-10 am, 5-8 pm); ventilate around midday.")
-        t.append("N95/FFP2 masks for the commute, not cloth masks.")
+        t.append(("Keep windows shut during peak traffic hours (8-10 am, 5-8 pm); ventilate around midday.",
+                  "भीड़ वाले समय (सुबह 8-10, शाम 5-8) खिड़कियाँ बंद रखें; दोपहर में हवा आने दें।"))
+        t.append(("N95/FFP2 masks for the commute, not cloth masks.",
+                  "आने-जाने में N95/FFP2 मास्क पहनें, कपड़े का मास्क नहीं।"))
     if aqi > 300:
-        t.append("Under GRAP Stage III/IV, Delhi-NCR schools may be ordered into hybrid mode; check DoE circulars.")
+        t.append(("Under GRAP Stage III/IV, Delhi-NCR schools may be ordered into hybrid mode; check DoE circulars.",
+                  "GRAP चरण III/IV में दिल्ली-NCR के स्कूल हाइब्रिड मोड में जा सकते हैं; शिक्षा निदेशालय के परिपत्र देखें।"))
     if aqi > 100:
-        t.append("Children with asthma: carry reliever inhaler, skip strenuous play.")
+        t.append(("Children with asthma: carry reliever inhaler, skip strenuous play.",
+                  "अस्थमा वाले बच्चे इनहेलर साथ रखें और ज़्यादा मेहनत वाले खेल न खेलें।"))
     if feels_like >= 32:
-        t.append("Water bell every 30-40 minutes; ORS available in the sick room.")
+        t.append(("Water bell every 30-40 minutes; ORS available in the sick room.",
+                  "हर 30-40 मिनट में पानी की घंटी बजाएँ; चिकित्सा कक्ष में ORS रखें।"))
     if feels_like >= 41:
-        t.append("Hold assembly before 8 am or indoors; light cotton uniforms, caps allowed.")
-        t.append("Know heatstroke signs: hot dry skin, confusion, vomiting - cool and call 108.")
+        t.append(("Hold assembly before 8 am or indoors; light cotton uniforms, caps allowed.",
+                  "प्रार्थना सभा सुबह 8 बजे से पहले या अंदर करें; हल्की सूती वर्दी और टोपी की अनुमति दें।"))
+        t.append(("Know heatstroke signs: hot dry skin, confusion, vomiting - cool and call 108.",
+                  "लू के लक्षण पहचानें: गर्म सूखी त्वचा, भ्रम, उल्टी - बच्चे को ठंडा करें और 108 पर कॉल करें।"))
     if not t:
-        t.append("Good conditions - a great day for outdoor learning.")
-    return t
+        t.append(("Good conditions - a great day for outdoor learning.",
+                  "अच्छी स्थिति - बाहर पढ़ाई और खेल के लिए बढ़िया दिन।"))
+    return [{"en": en, "hi": hi} for en, hi in t]

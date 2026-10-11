@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
+from datetime import date
 
 import httpx
 
@@ -82,7 +83,7 @@ def _nominatim(query: str) -> list[dict]:
 def _fetch(lat: float, lon: float) -> tuple[dict, dict]:
     common = {"latitude": lat, "longitude": lon, "timezone": "auto", "forecast_days": 4}
     with httpx.Client(timeout=20) as c:
-        air = c.get(AIR_URL, params={**common, "hourly": "pm2_5,pm10,us_aqi"})
+        air = c.get(AIR_URL, params={**common, "hourly": "pm2_5,pm10"})
         wx = c.get(
             WEATHER_URL,
             params={**common, "hourly": "temperature_2m,relative_humidity_2m,apparent_temperature,uv_index"},
@@ -111,7 +112,6 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
     days: dict[str, list[dict]] = defaultdict(list)
     for i, t in enumerate(ah["time"]):
         pm25, pm10 = ah["pm2_5"][i], ah["pm10"][i]
-        us = (ah.get("us_aqi") or [None] * len(ah["time"]))[i]
         w = weather_by_time.get(t)
         if w is None or (pm25 is None and pm10 is None) or w[2] is None:
             continue
@@ -122,7 +122,6 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
             "pm25": pm25,
             "pm10": pm10,
             "aqi": a["aqi"],
-            "us_aqi": us,
             "dominant": a["dominant"],
             "temp": w[0],
             "rh": w[1],
@@ -142,10 +141,11 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
         out_days.append({
             "date": date,
             "peak_aqi": peak_aqi,
-            "peak_us_aqi": max((h["us_aqi"] or 0) for h in school) or None,
             "aqi_category": rules.aqi_category(peak_aqi),
+            "aqi_category_hi": rules.AQI_CATEGORY_HI[rules.aqi_category(peak_aqi)],
             "peak_feels_like": round(peak_heat, 1),
             "heat_category": rules.heat_category(peak_heat),
+            "heat_category_hi": rules.heat_category(peak_heat, hindi=True),
             "max_uv": max((h["uv"] or 0) for h in school),
             "overall_level": overall,
             "overall": rules.LEVELS[overall],
@@ -165,26 +165,119 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
         "sensitive": sensitive,
         "generated_at": now_iso or time.strftime("%Y-%m-%dT%H:%M", time.gmtime(time.time() + wx.get("utc_offset_seconds", 0))),
         "days": out_days,
-        "source": "Copernicus CAMS forecast via Open-Meteo (~40 km grid). Indian AQI uses CPCB breakpoints on hourly PM2.5/PM10; US AQI is shown because most apps use that scale.",
+        "source": "Copernicus CAMS forecast via Open-Meteo (~40 km grid). AQI uses CPCB National AQI breakpoints on hourly PM2.5/PM10; heat alerts follow the IMD colour code.",
     }
 
 
+WEEKDAYS_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+WEEKDAYS_HI = ["सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"]
+
+# What the school will do, in words a parent understands: (activity id, level) -> (en, hi)
+SCHOOL_PLAN = {
+    ("assembly", 1): ("keep the morning assembly short", "प्रार्थना सभा छोटी रखेगा"),
+    ("assembly", 2): ("keep the morning assembly short and in the shade", "प्रार्थना सभा छोटी और छाँव में करेगा"),
+    ("assembly", 3): ("hold the morning assembly inside the classrooms", "प्रार्थना सभा कक्षाओं के अंदर करेगा"),
+    ("recess", 1): ("give children regular water breaks during recess", "मध्यावकाश में बच्चों को बार-बार पानी पिलाएगा"),
+    ("recess", 2): ("keep outdoor play at recess short and in the shade", "मध्यावकाश में बाहर का खेल कम और छाँव में रखेगा"),
+    ("recess", 3): ("keep children indoors during recess", "मध्यावकाश में बच्चों को कक्षा के अंदर रखेगा"),
+    ("pe", 1): ("hold PE with extra water breaks", "पीटी के दौरान अतिरिक्त पानी का ब्रेक देगा"),
+    ("pe", 2): ("keep PE light and short, with no running", "पीटी हल्की और छोटी रखेगा, दौड़ नहीं होगी"),
+    ("pe", 3): ("hold PE indoors, with no outdoor games", "पीटी अंदर कराएगा, बाहर कोई खेल नहीं होगा"),
+}
+# When polluted air (not heat) is the reason, shade does not help - say what does.
+SCHOOL_PLAN_AIR = {
+    ("assembly", 1): ("keep the morning assembly short", "प्रार्थना सभा छोटी रखेगा"),
+    ("assembly", 2): ("keep the morning assembly very short", "प्रार्थना सभा बहुत छोटी रखेगा"),
+    ("recess", 1): ("keep an eye on children who cough or tire easily during recess", "मध्यावकाश में खाँसने या जल्दी थकने वाले बच्चों पर ध्यान रखेगा"),
+    ("recess", 2): ("keep outdoor play at recess short and calm", "मध्यावकाश में बाहर का खेल कम और हल्का रखेगा"),
+    ("pe", 1): ("keep PE light, with rest breaks", "पीटी हल्की रखेगा और बीच-बीच में आराम देगा"),
+}
+
+
+def fmt_date(iso: str) -> tuple[str, str, str]:
+    """'2026-10-13' -> ('13-10-2026', 'Tuesday', 'मंगलवार')"""
+    y, m, d = (int(x) for x in iso[:10].split("-"))
+    wd = date(y, m, d).weekday()
+    return f"{d:02d}-{m:02d}-{y}", WEEKDAYS_EN[wd], WEEKDAYS_HI[wd]
+
+
 def parent_notice(report: dict, day_index: int = 0) -> dict:
-    """WhatsApp-ready circular in English and Hindi, built from the rules (no LLM needed)."""
+    """A circular the school can forward to the parents' WhatsApp group, in English and Hindi.
+
+    Built from the same rules as the dashboard (no LLM), worded for parents rather than staff.
+    """
     d = report["days"][day_index]
-    lines_en = [
-        f"*{report['place']} - School safety update for {d['date']}*",
-        f"Air: AQI up to {d['peak_aqi']} ({d['aqi_category']}). Heat: feels like {d['peak_feels_like']}°C ({d['heat_category']}).",
-        "",
-    ]
-    lines_hi = [
-        f"*{report['place']} - {d['date']} के लिए विद्यालय सुरक्षा सूचना*",
-        f"वायु गुणवत्ता: AQI {d['peak_aqi']} तक ({d['aqi_category']})। गर्मी: महसूस तापमान {d['peak_feels_like']}°C।",
-        "",
-    ]
-    for a in d["activities"]:
-        lines_en.append(f"• {a['name']}: {a['verdict']} - {a['action']}")
-        lines_hi.append(f"• {a['name_hi']}: {a['verdict_hi']} - {a['action_hi']}")
-    lines_en += ["", "Parents: please send a water bottle" + (" and an N95 mask." if d["peak_aqi"] > 200 else ".")]
-    lines_hi += ["", "अभिभावक कृपया पानी की बोतल" + (" और N95 मास्क भेजें।" if d["peak_aqi"] > 200 else " भेजें।")]
-    return {"en": "\n".join(lines_en), "hi": "\n".join(lines_hi)}
+    dmy, wd_en, wd_hi = fmt_date(d["date"])
+    when_en = ["Today", "Tomorrow"][day_index] if day_index < 2 else f"On {wd_en}"
+    when_hi = ["आज", "कल"][day_index] if day_index < 2 else f"{wd_hi} को"
+    place = report["place"]
+    aqi, feels = d["peak_aqi"], round(d["peak_feels_like"])
+    levels = {a["id"]: a["level"] for a in d["activities"]}
+    drivers = {a["id"]: a["driver"] for a in d["activities"]}
+    overall = d["overall_level"]
+    hot, bad_air = feels >= 32, aqi > 100
+
+    # 1. Conditions, in one plain sentence
+    air_en = f"the air quality in {place} is expected to be {d['aqi_category'].lower()} (AQI up to {aqi})"
+    air_hi = f"{place} में हवा की गुणवत्ता {d['aqi_category_hi']} (AQI {aqi} तक) रहने की संभावना है"
+    if feels >= 38:
+        cond_en = f"{when_en}, {air_en}, and it will feel very hot, around {feels}°C, during school hours."
+        cond_hi = f"{when_hi} {air_hi}, और स्कूल के समय काफ़ी गर्मी रहेगी (लगभग {feels}°C जैसा महसूस होगा)।"
+    elif hot:
+        cond_en = f"{when_en}, {air_en}, and it will be warm, feeling like {feels}°C, during school hours."
+        cond_hi = f"{when_hi} {air_hi}, और स्कूल के समय गर्मी रहेगी (लगभग {feels}°C जैसा महसूस होगा)।"
+    else:
+        cond_en = f"{when_en}, {air_en}, and the weather will be pleasant."
+        cond_hi = f"{when_hi} {air_hi}, और मौसम सुहावना रहेगा।"
+
+    en = [f"*School update for {wd_en}, {dmy}*", "", "Dear Parents,", "", cond_en, ""]
+    hi = [f"*विद्यालय सूचना - {wd_hi}, {dmy}*", "", "प्रिय अभिभावकगण,", "", cond_hi, ""]
+
+    # 2. What the school will do
+    if overall >= 4:
+        en += ["Because conditions are expected to be severe, the school may hold classes online or stay closed. "
+               "We will confirm this in a separate message. Please keep your child indoors as far as possible.", ""]
+        hi += ["स्थिति गंभीर रहने की संभावना है, इसलिए विद्यालय ऑनलाइन कक्षाएँ चला सकता है या बंद रह सकता है। "
+               "इसकी पुष्टि अलग संदेश से की जाएगी। कृपया बच्चों को यथासंभव घर के अंदर रखें।", ""]
+    else:
+        plan = [
+            (SCHOOL_PLAN_AIR if drivers[k] == "air" and (k, v) in SCHOOL_PLAN_AIR else SCHOOL_PLAN)[(k, v)]
+            for k, v in levels.items()
+            if (k, v) in SCHOOL_PLAN
+        ]
+        if plan:
+            en.append("To keep the children safe, the school will:")
+            hi.append("बच्चों की सुरक्षा के लिए विद्यालय:")
+            en += [f"• {x[0]}" for x in plan] + [""]
+            hi += [f"• {x[1]}" for x in plan] + [""]
+        else:
+            en += ["All school activities, including outdoor play and PE, will go ahead as usual.", ""]
+            hi += ["खेल और पीटी सहित विद्यालय की सभी गतिविधियाँ सामान्य रूप से होंगी।", ""]
+
+    # 3. What parents can do
+    ask_en, ask_hi = [], []
+    if hot or overall >= 1:
+        ask_en.append("a full water bottle" + (" (an extra one if possible)" if feels >= 38 else ""))
+        ask_hi.append("पानी की भरी बोतल" + (" (हो सके तो एक अतिरिक्त)" if feels >= 38 else ""))
+    if feels >= 36:
+        ask_en.append("a cap and light cotton clothes")
+        ask_hi.append("टोपी और हल्के सूती कपड़े")
+    if aqi > 200:
+        ask_en.append("an N95 mask for the journey to and from school")
+        ask_hi.append("आने-जाने के लिए N95 मास्क")
+    if bad_air or report.get("sensitive"):
+        ask_en.append("their inhaler or medicines, if your child has asthma")
+        ask_hi.append("अस्थमा हो तो बच्चे का इनहेलर या दवाइयाँ")
+    if ask_en:
+        en += ["Please send your child with:"] + [f"• {x}" for x in ask_en] + [""]
+        hi += ["कृपया बच्चे के साथ भेजें:"] + [f"• {x}" for x in ask_hi] + [""]
+    if overall >= 2:
+        en += ["If your child has a fever, cough or difficulty breathing, please keep them at home and inform the class teacher.", ""]
+        hi += ["यदि बच्चे को बुखार, खाँसी या साँस लेने में तकलीफ़ हो, तो कृपया उसे घर पर रखें और कक्षा अध्यापक को सूचित करें।", ""]
+    if levels.get("dismissal", 0) >= 2:
+        en += ["At dismissal, please pick your child up on time so they do not have to wait outside.", ""]
+        hi += ["छुट्टी के समय कृपया बच्चे को समय पर लेने आएँ, ताकि उसे बाहर इंतज़ार न करना पड़े।", ""]
+
+    en += ["Thank you for your cooperation.", "", "Principal"]
+    hi += ["आपके सहयोग के लिए धन्यवाद।", "", "प्रधानाचार्य"]
+    return {"en": "\n".join(en), "hi": "\n".join(hi)}

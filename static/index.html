@@ -60,8 +60,8 @@
       <div class="stat glass tilt" id="statHeat"></div>
       <div class="stat glass tilt" id="statUv"></div>
     </div>
-    <p class="meta source" data-en="Forecast: Copernicus CAMS model via Open-Meteo (~40 km grid), so it can differ from the nearest CPCB station. Most apps show the US scale, which reads about twice as high for the same air."
-       data-hi="पूर्वानुमान: Copernicus CAMS मॉडल (~40 किमी ग्रिड) - निकटतम CPCB स्टेशन से अलग हो सकता है। अधिकतर ऐप US स्केल दिखाते हैं, जो उसी हवा के लिए लगभग दोगुना होता है।">Forecast: Copernicus CAMS model via Open-Meteo (~40 km grid), so it can differ from the nearest CPCB station. Most apps show the US scale, which reads about twice as high for the same air.</p>
+    <p class="meta source" data-en="AQI on the CPCB National AQI scale and heat alerts in the IMD colour code. Forecast from the Copernicus CAMS model (~40 km grid), so it can differ from the nearest CPCB station."
+       data-hi="AQI: CPCB राष्ट्रीय वायु गुणवत्ता सूचकांक, गर्मी: IMD रंग-कोड चेतावनी। पूर्वानुमान Copernicus CAMS मॉडल (~40 किमी ग्रिड) से है, इसलिए निकटतम CPCB स्टेशन से थोड़ा अलग हो सकता है।">AQI on the CPCB National AQI scale and heat alerts in the IMD colour code. Forecast from the Copernicus CAMS model (~40 km grid), so it can differ from the nearest CPCB station.</p>
 
     <h2 id="decHead">Decisions</h2>
     <div class="cards" id="cards"></div>
@@ -79,6 +79,7 @@
           <h3 data-en="Notice for parents" data-hi="अभिभावकों के लिए सूचना">Notice for parents</h3>
           <div class="seg"><button data-nl="en" class="on">EN</button><button data-nl="hi">हिं</button></div>
         </div>
+        <input id="schoolName" class="field" maxlength="80" placeholder="School name (optional, signs the notice)" aria-label="School name">
         <pre id="notice" class="notice"></pre>
         <div class="row">
           <button id="copyBtn" class="glass pillbtn" data-en="Copy" data-hi="कॉपी">Copy</button>
@@ -104,7 +105,7 @@
     <h2 data-en="How it decides" data-hi="यह कैसे तय करता है">How it decides</h2>
     <div class="steps">
       <div class="step glass tilt reveal"><span class="num">01</span><b>Live forecast</b><p>Hourly PM2.5, PM10, temperature and humidity for your exact location (Open-Meteo / Copernicus CAMS).</p></div>
-      <div class="step glass tilt reveal"><span class="num">02</span><b>Indian AQI</b><p>CPCB breakpoints, not the US scale, so numbers match Indian news and SAFAR.</p></div>
+      <div class="step glass tilt reveal"><span class="num">02</span><b>Indian AQI</b><p>India's official National AQI (CPCB), so numbers match Indian news, SAMEER and SAFAR.</p></div>
       <div class="step glass tilt reveal"><span class="num">03</span><b>School hours only</b><p>Each activity is judged on its own window: assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15.</p></div>
       <div class="step glass tilt reveal"><span class="num">04</span><b>Clear verdicts</b><p>Go · Go with care · Limit · Move indoors · Stay home. PE steps up a level; asthma mode is stricter.</p></div>
     </div>

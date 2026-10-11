@@ -21,13 +21,13 @@ Today the decision ("do we hold assembly outside? cancel PE? let the asthmatic k
 | | |
 |---|---|
 | 📍 **Any school in India** | Search a school, locality or city (OpenStreetMap), or use GPS. |
-| 🇮🇳 **Indian AQI, not US AQI** | Computed with **CPCB** breakpoints from hourly PM2.5 / PM10, so numbers match Indian news and SAFAR. |
+| 🇮🇳 **Indian standards** | AQI on India's **CPCB National AQI** scale (hourly PM2.5 / PM10), so numbers match Indian news, SAMEER and SAFAR. Heat alerts use the **IMD colour code** (Green / Yellow / Orange / Red). |
 | 🕖 **Judged on school hours** | Each activity is checked against its own time window (assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15). |
 | 🌡️ **Air + heat together** | The verdict is the worse of air risk and heat-stress risk ("feels like" temperature), and each card says which one is driving it. |
 | 🚦 **Five plain verdicts** | Go · Go with care · Limit · Move indoors · Stay home, each with a concrete instruction. |
 | 🫁 **Asthma mode** | Stricter thresholds for sensitive children. Strenuous PE always steps up one level. |
 | 📅 **4-day outlook** | Plan sports day or a field trip ahead of time. |
-| 📲 **Parent notice** | One tap to copy or share on WhatsApp, in English or Hindi. |
+| 📲 **Parent circular** | A ready-to-forward message for the parents' WhatsApp group in English or Hindi: what the conditions are, what the school will do, what to send with the child (water, cap, N95 mask, inhaler) and when to keep them home. Dated DD-MM-YYYY and signed with the school's name. |
 | 🤖 **Ask the advisor** | A Strands agent answers free-form questions ("Can we hold the football match tomorrow at 11?") in English or Hindi, after calling tools for live data. |
 | 🌐 **Bilingual UI** | Full English / हिंदी toggle. Works on a basic phone browser; no login, no install. |
 
@@ -42,7 +42,7 @@ The dashboard is **fully deterministic and works without any AI key**. The agent
  FastAPI (app/main.py)
     ├── app/data.py   ─ Open-Meteo air quality (Copernicus CAMS) + weather forecast,
     │                   Open-Meteo / OpenStreetMap Nominatim geocoding, 15-min cache
-    ├── app/rules.py  ─ CPCB AQI · heat-stress bands · per-activity decision engine
+    ├── app/rules.py  ─ CPCB AQI · IMD-colour heat alerts · per-activity decisions
     └── app/agent.py  ─ Strands Agents SDK agent
                          tools: find_place · school_conditions · parent_circular
                          model: any OpenAI-compatible LLM (Groq / Gemini free tiers,
@@ -58,6 +58,7 @@ The dashboard is **fully deterministic and works without any AI key**. The agent
 - **AQI:** CPCB sub-index for PM2.5 and PM10, AQI = max. Bands: Good ≤50, Satisfactory ≤100, Moderate ≤200, Poor ≤300, Very Poor ≤400, Severe >400.
 - **Air → level:** ≤100 Go · ≤200 Go with care (Limit in asthma mode) · ≤300 Limit (Move indoors in asthma mode) · ≤400 Move indoors · >400 Stay home.
 - **Heat ("feels like" °C) → level:** <32 Go · <41 Go with care · <47 Limit · <54 Move indoors · ≥54 Stay home (stricter in asthma mode).
+- **Heat alert label (IMD colour code):** <32 Green · 32-41 Yellow (be aware) · 41-47 Orange (be prepared) · ≥47 Red (take action). "Feels like" is used so humid coastal heat counts too.
 - **Strenuous activities** (PE) step up one level, capped at "Move indoors"; only conditions themselves trigger "Stay home".
 - Each activity uses the **worst hour inside its own window**.
 

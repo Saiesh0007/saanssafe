@@ -116,7 +116,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, .switch input:focus-
 .stat .k { color: var(--muted); font-size: 13px; }
 .stat .v { font-size: clamp(22px, 3.4vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
 .stat .c { font-size: 14px; font-weight: 600; }
-.stat .us { color: var(--muted); font-weight: 500; white-space: nowrap; }
+.field { width: 100%; margin-top: 10px; font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 55%, transparent); color: var(--ink); }
+.field:focus { outline: none; border-color: var(--brand); }
 .source { margin: 10px 2px 0; }
 .bar { height: 6px; border-radius: 9px; background: var(--line); margin-top: 10px; overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 9px; width: 0; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }

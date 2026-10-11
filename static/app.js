@@ -47,7 +47,7 @@ async function fetchReport(place, sensitive) {
   const common = `latitude=${place.lat}&longitude=${place.lon}&timezone=auto&forecast_days=4`;
   try {
     const [air, wx] = await Promise.all([
-      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&hourly=pm2_5,pm10,us_aqi`).then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&hourly=pm2_5,pm10`).then((r) => (r.ok ? r.json() : Promise.reject())),
       fetch(`https://api.open-meteo.com/v1/forecast?${common}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,uv_index`).then((r) => (r.ok ? r.json() : Promise.reject())),
     ]);
     return await api("/api/report", {
@@ -93,6 +93,16 @@ async function load(place) {
   }
 }
 
+// '2026-10-11T19:02' -> '11-10-2026, 7:02 pm'
+function fmtStamp(iso) {
+  const [d, tm = "00:00"] = iso.split("T");
+  const [y, m, dd] = d.split("-");
+  let [h, mi] = tm.split(":").map(Number);
+  const ap = h >= 12 ? "pm" : "am";
+  h = h % 12 || 12;
+  return `${dd}-${m}-${y}, ${h}:${String(mi).padStart(2, "0")} ${ap}`;
+}
+
 function dayLabel(i, date) {
   const d = new Date(date + "T00:00");
   if (i === 0) return t("Today", "आज");
@@ -103,7 +113,7 @@ function dayLabel(i, date) {
 function render() {
   const r = state.report, d = r.days[state.day];
   $("#placeName").textContent = r.place;
-  $("#meta").textContent = `${t("Updated", "अपडेट")} ${r.generated_at.replace("T", " ")} · ${r.sensitive ? t("Asthma-safe mode", "अस्थमा-सुरक्षित मोड") : t("Standard mode", "सामान्य मोड")}`;
+  $("#meta").textContent = `${t("Updated", "अपडेट")} ${fmtStamp(r.generated_at)} · ${r.sensitive ? t("Asthma-safe mode", "अस्थमा-सुरक्षित मोड") : t("Standard mode", "सामान्य मोड")}`;
   $("#tabs").innerHTML = r.days.map((x, i) => `<button role="tab" class="${i === state.day ? "on" : ""}" data-i="${i}">${dayLabel(i, x.date)}</button>`).join("");
 
   const lv = d.overall_level;
@@ -115,9 +125,9 @@ function render() {
   requestAnimationFrame(() => { const fg = $("#banner .fg"); if (fg) fg.style.strokeDashoffset = fg.dataset.to; });
 
   const heatPct = Math.max(0, Math.min(1, (d.peak_feels_like - 20) / 35));
-  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (India)", "अधिकतम AQI")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${d.aqi_category}${d.peak_us_aqi ? ` <span class="us">· ${t("US scale", "US स्केल")} ${d.peak_us_aqi}</span>` : ""}</div>
+  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (CPCB)", "अधिकतम AQI (CPCB)")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${t(d.aqi_category, d.aqi_category_hi)}</div>
     <div class="bar"><i style="background:${aqiColor(d.peak_aqi)}" data-w="${Math.min(100, d.peak_aqi / 5)}"></i></div>`;
-  $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${d.heat_category}</div>
+  $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${t(d.heat_category, d.heat_category_hi)}</div>
     <div class="bar"><i style="background:linear-gradient(90deg,#facc15,#f97316,#ef4444)" data-w="${heatPct * 100}"></i></div>`;
   $("#statUv").innerHTML = `<div class="k">${t("Max UV", "अधिकतम UV")}</div><div class="v" data-count="${Math.round(d.max_uv)}">0</div><div class="c">${d.max_uv >= 8 ? t("Very high", "बहुत अधिक") : d.max_uv >= 6 ? t("High", "अधिक") : t("Moderate/low", "मध्यम/कम")}</div>
     <div class="bar"><i style="background:linear-gradient(90deg,#a3e635,#facc15,#a21caf)" data-w="${Math.min(100, d.max_uv * 9)}"></i></div>`;
@@ -135,7 +145,7 @@ function render() {
     </div>`).join("");
 
   renderChart(d.hourly);
-  $("#tips").innerHTML = d.tips.map((x) => `<li>${esc(x)}</li>`).join("");
+  $("#tips").innerHTML = d.tips.map((x) => `<li>${esc(t(x.en, x.hi))}</li>`).join("");
   renderNotice();
 }
 
@@ -192,7 +202,9 @@ function renderChart(hours) {
 }
 
 function renderNotice() {
-  const text = state.report.notices[state.day][state.noticeLang];
+  const school = $("#schoolName").value.trim();
+  let text = state.report.notices[state.day][state.noticeLang];
+  if (school) text = text.replace(/(Principal|प्रधानाचार्य)$/, `$1\n${school}`);
   $("#notice").textContent = text;
   $("#waBtn").href = "https://wa.me/?text=" + encodeURIComponent(text);
   document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.nl === state.noticeLang));
@@ -244,6 +256,8 @@ $("#chips").innerHTML = CITIES.map((c, i) => `<button class="chip" type="button"
 $("#chips").addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) load(CITIES[+b.dataset.i]); });
 $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) { state.day = +b.dataset.i; render(); } });
 document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { state.noticeLang = b.dataset.nl; renderNotice(); }));
+$("#schoolName").value = localGet("school") || "";
+$("#schoolName").addEventListener("input", () => { localSet("school", $("#schoolName").value); if (state.report) renderNotice(); });
 $("#copyBtn").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("#notice").textContent); $("#copyBtn").textContent = "✓"; setTimeout(applyLang, 1200); } catch {}
 });
