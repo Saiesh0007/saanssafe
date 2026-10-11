@@ -3,6 +3,8 @@
 **Outdoor safety for Indian schools on bad-air and heatwave days.**
 Type a school's location and SaansSafe turns live air-quality and heat forecasts into a clear verdict for each part of the school day (morning assembly, recess, PE and dismissal), plus a WhatsApp-ready notice for parents in English and Hindi.
 
+**🔗 Live demo: https://saanssafe.onrender.com** (free tier, so the first load can take ~30 s while it wakes up)
+
 > Tracks: **Air** (school safety on bad days, pollution exposure) · **Heat and Water** (heatwaves)
 > AWS: the advisor agent is built on the **AWS open-source [Strands Agents SDK](https://github.com/strands-agents/sdk-python)**.
 
@@ -49,6 +51,7 @@ The dashboard is **fully deterministic and works without any AI key**. The agent
 
 ### How AWS is used
 - **Strands Agents SDK (AWS open source):** `app/agent.py` defines three `@tool` functions and an `Agent` with a safety-first system prompt. The agent loop decides when to geocode, fetch conditions for a given day, or draft a parent circular, then explains the result. Because Strands is model-agnostic, the project runs **completely free** (Groq / Gemini free tier or local Ollama). Switching to **Amazon Bedrock** is one env var (`LLM_PROVIDER=bedrock`).
+- Hosting: deployed free on Render from the `render.yaml` blueprint. Forecasts are fetched in the visitor's browser and posted to the API, because free hosts share outbound IPs that the free data APIs rate-limit.
 - The app is a single Docker image (`Dockerfile`), so it can go to **AWS App Runner / ECS Fargate / Lightsail** unchanged when credits are available.
 
 ### The decision rules (`app/rules.py`)
