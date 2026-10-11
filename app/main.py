@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import httpx
@@ -72,14 +73,19 @@ class AskBody(BaseModel):
     lang: str = "en"
 
 
+def wants_hindi(question: str, ui_lang: str) -> bool:
+    """A question typed in Devanagari gets a Hindi answer whatever the page language;
+    otherwise follow the page (so Hinglish on the Hindi page still gets Hindi)."""
+    return bool(re.search(r"[ऀ-ॿ]", question)) or ui_lang == "hi"
+
+
 @app.post("/api/ask")
 def ask(body: AskBody):
     if not agent.is_enabled():
         raise HTTPException(503, "The AI advisor is not configured on this server. The dashboard still works.")
     ctx = body.model_dump() if body.lat is not None else None
-    reply_in = "Hindi (Devanagari)" if body.lang == "hi" else "English"
     try:
-        return {"answer": agent.ask(f"{body.question}\n[Reply in {reply_in}.]", ctx)}
+        return {"answer": agent.ask(body.question, ctx, hindi=wants_hindi(body.question, body.lang))}
     except Exception as e:  # surface model/provider errors to the UI instead of a blank 500
         raise HTTPException(502, f"Advisor error: {e}")
 

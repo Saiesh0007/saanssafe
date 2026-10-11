@@ -75,3 +75,10 @@ def test_heat_alerts_use_imd_colours():
     assert rules.heat_category(38).startswith("Yellow")
     assert rules.heat_category(44).startswith("Orange")
     assert rules.heat_category(50, hindi=True).startswith("लाल")
+
+
+def test_advisor_replies_in_the_question_language():
+    from app.main import wants_hindi
+    assert wants_hindi("कल बच्चों को पीटी करा सकते हैं?", "en")
+    assert wants_hindi("kal PT kara sakte hai?", "hi")
+    assert not wants_hindi("Can we hold PE tomorrow?", "en")

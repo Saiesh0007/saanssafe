@@ -118,14 +118,24 @@ def is_enabled() -> bool:
     return provider_name() is not None
 
 
-def ask(question: str, context: dict | None = None) -> str:
+HINDI_RULE = """
+LANGUAGE: Write your entire final answer in simple Hindi, in Devanagari script (हिंदी), even though the
+tool results are in English. Translate verdicts too: Go = ठीक है, Go with care = सावधानी से,
+Limit = सीमित करें, Move indoors = अंदर ही रखें, Stay home = घर पर रहें. Keep numbers, AQI and °C as they are.
+"""
+
+
+ENGLISH_RULE = "\nLANGUAGE: Write your final answer in English.\n"
+
+
+def ask(question: str, context: dict | None = None, hindi: bool = False) -> str:
     model = _model()
     if model is None:
         raise RuntimeError("No LLM configured. Set GROQ_API_KEY or GEMINI_API_KEY (both have free tiers).")
     agent = Agent(
         model=model,
         tools=[find_place, school_conditions, parent_circular],
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=SYSTEM_PROMPT + (HINDI_RULE if hindi else ENGLISH_RULE),
         callback_handler=None,
     )
     if context:
