@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SaansSafe · School safety on bad-air & heat days</title>
+<meta name="description" content="Can the kids go out today? Indian AQI + heat stress turned into clear decisions for assembly, recess, PE and dismissal.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫁</text></svg>">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">🫁</span> <b>SaansSafe</b><span class="tag">school safety on bad-air &amp; heat days</span></div>
+  <button id="langBtn" class="ghost" aria-label="Switch language">हिंदी</button>
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <h1 data-en="Can the kids go outside today?" data-hi="क्या आज बच्चे बाहर जा सकते हैं?">Can the kids go outside today?</h1>
+    <p class="sub" data-en="Air quality and heat for your school, turned into a clear yes or no for assembly, recess, PE and the walk home."
+       data-hi="आपके स्कूल की हवा और गर्मी - प्रार्थना सभा, खेल, पीटी और घर वापसी के लिए साफ़ हाँ या ना।">Air quality and heat for your school, turned into a clear yes or no for assembly, recess, PE and the walk home.</p>
+
+    <form id="searchForm" class="search" autocomplete="off">
+      <input id="q" type="search" placeholder="School, locality or city - e.g. Anand Vihar, Delhi" aria-label="Search place">
+      <button type="submit" class="primary" data-en="Check" data-hi="जाँचें">Check</button>
+      <ul id="suggest" class="suggest" hidden></ul>
+    </form>
+    <div class="row">
+      <button id="geoBtn" class="ghost" type="button" data-en="📍 Use my location" data-hi="📍 मेरी लोकेशन">📍 Use my location</button>
+      <label class="toggle"><input id="sensitive" type="checkbox"> <span data-en="Plan for children with asthma" data-hi="अस्थमा वाले बच्चों के लिए">Plan for children with asthma</span></label>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="placebar">
+      <div><div class="place" id="placeName"></div><div class="meta" id="meta"></div></div>
+      <div class="tabs" id="tabs" role="tablist"></div>
+    </div>
+
+    <div class="banner" id="banner"></div>
+
+    <div class="stats">
+      <div class="stat" id="statAir"></div>
+      <div class="stat" id="statHeat"></div>
+      <div class="stat" id="statUv"></div>
+    </div>
+
+    <h2 data-en="Today's decisions" data-hi="आज के निर्णय" id="decHead">Decisions</h2>
+    <div class="cards" id="cards"></div>
+
+    <h2 data-en="Hour by hour" data-hi="घंटेवार">Hour by hour</h2>
+    <div class="chart card" id="chart"></div>
+
+    <div class="two">
+      <div class="card">
+        <h3 data-en="What to do" data-hi="क्या करें">What to do</h3>
+        <ul id="tips" class="tips"></ul>
+      </div>
+      <div class="card">
+        <div class="noticehead">
+          <h3 data-en="Notice for parents" data-hi="अभिभावकों के लिए सूचना">Notice for parents</h3>
+          <div class="seg"><button data-nl="en" class="on">EN</button><button data-nl="hi">हिं</button></div>
+        </div>
+        <pre id="notice" class="notice"></pre>
+        <div class="row">
+          <button id="copyBtn" class="ghost" data-en="Copy" data-hi="कॉपी">Copy</button>
+          <a id="waBtn" class="primary wa" target="_blank" rel="noopener" data-en="Share on WhatsApp" data-hi="WhatsApp पर भेजें">Share on WhatsApp</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card ask">
+      <h3><span data-en="Ask the advisor" data-hi="सलाहकार से पूछें">Ask the advisor</span> <small class="pill">Strands Agents</small></h3>
+      <p class="meta" data-en="Ask anything - in English or Hindi. The agent checks live conditions before answering."
+         data-hi="अंग्रेज़ी या हिंदी में कुछ भी पूछें - जवाब से पहले एजेंट लाइव डेटा देखता है।">Ask anything - in English or Hindi. The agent checks live conditions before answering.</p>
+      <div class="chips" id="askChips"></div>
+      <form id="askForm" class="search">
+        <input id="askQ" placeholder="Can we hold the inter-house football match tomorrow at 11?" aria-label="Question">
+        <button class="primary" type="submit" data-en="Ask" data-hi="पूछें">Ask</button>
+      </form>
+      <div id="answer" class="answer" hidden></div>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2 data-en="How it decides" data-hi="यह कैसे तय करता है">How it decides</h2>
+    <ol>
+      <li><b>Live forecast</b> - hourly PM2.5, PM10, temperature and humidity for your exact location (Open-Meteo / Copernicus CAMS).</li>
+      <li><b>Indian AQI</b> - computed with CPCB breakpoints, not the US scale, so numbers match what Indian news and SAFAR report.</li>
+      <li><b>School hours only</b> - every activity is judged on its own time window (assembly 7-9, recess 10-12, PE 9-14, dismissal 13-15).</li>
+      <li><b>Clear verdicts</b> - Go · Go with care · Limit · Move indoors · Stay home. Strenuous PE steps up one level; asthma mode is stricter.</li>
+    </ol>
+    <p class="meta">Guidance tool, not a medical or government order. Always follow your state's DoE / GRAP circulars.</p>
+  </section>
+</main>
+
+<footer>Built for WeMakeDevs Environmental Hacks · Agent on <a href="https://strandsagents.com" target="_blank" rel="noopener">AWS Strands Agents SDK</a> · Data: Open-Meteo, OpenStreetMap</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
