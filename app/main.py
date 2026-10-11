@@ -86,6 +86,8 @@ def ask(body: AskBody):
     ctx = body.model_dump() if body.lat is not None else None
     try:
         return {"answer": agent.ask(body.question, ctx, hindi=wants_hindi(body.question, body.lang))}
+    except agent.AdvisorBusy:
+        raise HTTPException(429, "busy")
     except Exception as e:  # surface model/provider errors to the UI instead of a blank 500
         raise HTTPException(502, f"Advisor error: {e}")
 

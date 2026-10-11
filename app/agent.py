@@ -17,6 +17,8 @@ import logging
 import os
 
 from strands import Agent, tool
+from strands.event_loop._retry import ModelRetryStrategy
+from strands.types.exceptions import ModelThrottledException
 
 from . import data
 
@@ -54,7 +56,15 @@ def provider_name() -> str | None:
     return None
 
 
-def _model():
+# Groq's free tier allows 8k tokens/minute *per model*; when the main model is throttled we
+# switch to a second one with its own quota instead of sitting through long retries.
+FALLBACK_MODELS = {"groq": "openai/gpt-oss-20b"}
+
+# Strands' default retries throttled calls up to 6 times (4s, 8s, ... 64s): minutes of a frozen page.
+QUICK_RETRY = dict(max_attempts=2, initial_delay=2, max_delay=4)
+
+
+def _model(model_id: str | None = None):
     provider = provider_name()
     if provider is None:
         return None
@@ -69,7 +79,7 @@ def _model():
     api_key = os.getenv(key_env) if key_env else "ollama"
     return OpenAIModel(
         client_args={"api_key": api_key or os.getenv("LLM_API_KEY"), "base_url": os.getenv("LLM_BASE_URL", base_url)},
-        model_id=os.getenv("LLM_MODEL", default_model),
+        model_id=model_id or os.getenv("LLM_MODEL", default_model),
         params={"temperature": 0.3, "max_tokens": 700},
     )
 
@@ -97,8 +107,21 @@ def school_conditions(lat: float, lon: float, place: str = "", sensitive_childre
     """
     report = data.school_report(lat, lon, place, sensitive_children)
     d = report["days"][max(0, min(day, len(report["days"]) - 1))]
-    d = {k: v for k, v in d.items() if k != "hourly"}
-    return json.dumps({"place": report["place"], "forecast_days": [x["date"] for x in report["days"]], **d})
+    # Compact on purpose: the free LLM tier is metered in tokens per minute.
+    return json.dumps({
+        "place": report["place"],
+        "date": data.fmt_date(d["date"])[0],
+        "school_hours_peak_aqi": d["peak_aqi"],
+        "aqi_category": d["aqi_category"],
+        "peak_feels_like_c": d["peak_feels_like"],
+        "heat_alert": d["heat_category"],
+        "overall": d["overall"],
+        "activities": [
+            {"name": a["name"], "hours": a["window"], "verdict": a["verdict"], "do": a["action"], "because_of": a["driver"]}
+            for a in d["activities"]
+        ],
+        "tips": [t["en"] for t in d["tips"]],
+    })
 
 
 @tool
@@ -129,18 +152,28 @@ ENGLISH_RULE = "\nLANGUAGE: Write your final answer in English.\n"
 
 
 def ask(question: str, context: dict | None = None, hindi: bool = False) -> str:
-    model = _model()
-    if model is None:
+    if _model() is None:
         raise RuntimeError("No LLM configured. Set GROQ_API_KEY or GEMINI_API_KEY (both have free tiers).")
-    agent = Agent(
-        model=model,
-        tools=[find_place, school_conditions, parent_circular],
-        system_prompt=SYSTEM_PROMPT + (HINDI_RULE if hindi else ENGLISH_RULE),
-        callback_handler=None,
-    )
     if context:
         question = (
             f"[The user is looking at: {context.get('place')} (lat {context.get('lat')}, lon {context.get('lon')}), "
-            f"sensitive_children={context.get('sensitive', False)}]\n{question}"
+            f"sensitive_children={context.get('sensitive', False)}. Use these coordinates; no need to call find_place.]\n{question}"
         )
-    return str(agent(question)).strip()
+    fallback = FALLBACK_MODELS.get(provider_name() or "")
+    for model_id in [None, fallback] if fallback else [None]:
+        agent = Agent(
+            model=_model(model_id),
+            tools=[find_place, school_conditions, parent_circular],
+            system_prompt=SYSTEM_PROMPT + (HINDI_RULE if hindi else ENGLISH_RULE),
+            callback_handler=None,
+            retry_strategy=ModelRetryStrategy(**QUICK_RETRY),
+        )
+        try:
+            return str(agent(question)).strip()
+        except ModelThrottledException:
+            continue
+    raise AdvisorBusy()
+
+
+class AdvisorBusy(Exception):
+    """Every model's free-tier quota is used up for this minute."""

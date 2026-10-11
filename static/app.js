@@ -289,7 +289,11 @@ $("#askForm").addEventListener("submit", async (e) => {
   if (!q) return;
   const box = $("#answer");
   box.hidden = false; box.className = "answer loading";
-  box.textContent = t("Checking live conditions…", "लाइव स्थिति देख रहे हैं…");
+  const steps = [t("Finding the school", "स्कूल ढूँढ रहे हैं"), t("Checking live air and heat", "लाइव हवा और गर्मी देख रहे हैं"),
+    t("Writing the advice", "सलाह लिख रहे हैं"), t("Almost there - the free AI is busy, hang on", "बस थोड़ा और - मुफ़्त AI व्यस्त है, रुकिए")];
+  let step = 0;
+  box.textContent = steps[0];
+  const ticker = setInterval(() => { step = Math.min(step + 1, steps.length - 1); box.textContent = steps[step]; }, 4000);
   try {
     const p = state.place || {};
     const res = await api("/api/ask", {
@@ -297,7 +301,13 @@ $("#askForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({ question: q, place: p.name, lat: p.lat, lon: p.lon, sensitive: $("#sensitive").checked, lang: state.lang }),
     });
     box.className = "answer"; box.textContent = res.answer.replace(/\*\*/g, "");
-  } catch (err) { box.className = "answer"; box.textContent = err.message; }
+  } catch (err) {
+    box.className = "answer";
+    box.textContent = err.message === "busy"
+      ? t("The free AI advisor is getting a lot of questions right now. Please try again in a minute - the dashboard above already has today's decisions.",
+          "मुफ़्त AI सलाहकार के पास अभी बहुत सवाल हैं। कृपया एक मिनट बाद फिर पूछें - ऊपर डैशबोर्ड में आज के निर्णय पहले से हैं।")
+      : err.message;
+  } finally { clearInterval(ticker); }
 });
 
 // 3D tilt that follows the pointer (desktop only), and scroll reveals
