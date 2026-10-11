@@ -33,6 +33,24 @@ def places(q: str = Query(..., min_length=2)):
         raise HTTPException(502, f"Geocoding failed: {e}")
 
 
+class ReportBody(BaseModel):
+    lat: float
+    lon: float
+    place: str = ""
+    sensitive: bool = False
+    air: dict
+    wx: dict
+
+
+@app.post("/api/report")
+def report_from_browser(body: ReportBody):
+    try:
+        data.seed(body.lat, body.lon, body.air, body.wx)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return report(body.lat, body.lon, body.place, body.sensitive)
+
+
 @app.get("/api/report")
 def report(lat: float, lon: float, place: str = "", sensitive: bool = False):
     try:

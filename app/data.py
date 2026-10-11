@@ -16,7 +16,18 @@ WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 
 SCHOOL_HOURS = range(7, 16)  # 07:00-15:00 local
 _cache: dict[tuple, tuple[float, dict]] = {}
-CACHE_SECONDS = 15 * 60
+CACHE_SECONDS = 30 * 60
+
+
+def seed(lat: float, lon: float, air: dict, wx: dict) -> None:
+    """Store forecasts the browser fetched itself, so the report and the agent reuse them.
+
+    Free hosts share outbound IPs, and Open-Meteo rate-limits busy IPs; letting each
+    visitor's browser fetch keeps the app working for everyone.
+    """
+    if not (air.get("hourly", {}).get("pm2_5") and wx.get("hourly", {}).get("apparent_temperature")):
+        raise ValueError("Incomplete forecast data")
+    _cache[(round(lat, 2), round(lon, 2))] = (time.time(), {"air": air, "wx": wx})
 
 
 def geocode(query: str) -> list[dict]:

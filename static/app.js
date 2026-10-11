@@ -42,6 +42,39 @@ async function api(path, opts) {
   return body;
 }
 
+// Fetch the forecast from the visitor's own browser (Open-Meteo allows CORS), so shared
+// server IPs never hit rate limits; fall back to the server fetching it.
+async function fetchReport(place, sensitive) {
+  const common = `latitude=${place.lat}&longitude=${place.lon}&timezone=auto&forecast_days=4`;
+  try {
+    const [air, wx] = await Promise.all([
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&hourly=pm2_5,pm10`).then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch(`https://api.open-meteo.com/v1/forecast?${common}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,uv_index`).then((r) => (r.ok ? r.json() : Promise.reject())),
+    ]);
+    return await api("/api/report", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: place.lat, lon: place.lon, place: place.name, sensitive, air, wx }),
+    });
+  } catch {
+    return api(`/api/report?lat=${place.lat}&lon=${place.lon}&place=${encodeURIComponent(place.name)}&sensitive=${sensitive}`);
+  }
+}
+
+// Place search: server first, then the same free geocoders straight from the browser.
+async function searchPlaces(q) {
+  try {
+    const res = await api(`/api/places?q=${encodeURIComponent(q)}`);
+    if (res.length) return res;
+  } catch {}
+  const om = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6`).then((r) => r.json()).catch(() => ({}));
+  if (om.results?.length) {
+    om.results.sort((a, b) => (a.country_code !== "IN") - (b.country_code !== "IN"));
+    return om.results.map((x) => ({ name: x.name, admin: [x.admin2, x.admin1, x.country].filter(Boolean).join(", "), lat: x.latitude, lon: x.longitude }));
+  }
+  const nm = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&limit=6&countrycodes=in`).then((r) => r.json()).catch(() => []);
+  return nm.map((x) => ({ name: x.display_name.split(",")[0], admin: x.display_name.split(",").slice(1, 4).join(",").trim(), lat: +x.lat, lon: +x.lon }));
+}
+
 async function load(place) {
   state.place = place;
   const sensitive = $("#sensitive").checked;
@@ -49,7 +82,7 @@ async function load(place) {
   $("#banner").className = "banner lv1";
   $("#banner").innerHTML = `<div class="big">${t("Checking the air and heat…", "हवा और गर्मी देख रहे हैं…")}</div>`;
   try {
-    state.report = await api(`/api/report?lat=${place.lat}&lon=${place.lon}&place=${encodeURIComponent(place.name)}&sensitive=${sensitive}`);
+    state.report = await fetchReport(place, sensitive);
     state.day = 0;
     render();
     $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -130,7 +163,7 @@ $("#q").addEventListener("input", () => {
   const q = $("#q").value.trim();
   if (q.length < 3) return ($("#suggest").hidden = true);
   timer = setTimeout(async () => {
-    try { suggestions = await api(`/api/places?q=${encodeURIComponent(q)}`); } catch { suggestions = []; }
+    try { suggestions = await searchPlaces(q); } catch { suggestions = []; }
     $("#suggest").innerHTML = suggestions.length
       ? suggestions.map((p, i) => `<li data-i="${i}">${esc(p.name)}<small>${esc(p.admin)}</small></li>`).join("")
       : `<li>${t("No match - try adding the city name", "नहीं मिला - शहर का नाम जोड़ें")}</li>`;
@@ -150,7 +183,7 @@ $("#searchForm").addEventListener("submit", async (e) => {
   const q = $("#q").value.trim();
   if (!q) return;
   try {
-    const res = suggestions.length ? suggestions : await api(`/api/places?q=${encodeURIComponent(q)}`);
+    const res = suggestions.length ? suggestions : await searchPlaces(q);
     if (!res.length) throw new Error(t("Place not found", "जगह नहीं मिली"));
     load(res[0]);
   } catch (err) { alert(err.message); }
