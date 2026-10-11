@@ -13,14 +13,18 @@ Any OpenAI-compatible endpoint works, so it can run for free:
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 from strands import Agent, tool
 
 from . import data
 
+# gpt-oss returns reasoning blocks; Strands drops them between turns and warns each time.
+logging.getLogger("strands.models.openai").setLevel(logging.ERROR)
+
 PRESETS = {
-    "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY", "llama-3.3-70b-versatile"),
+    "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY", "openai/gpt-oss-120b"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/", "GEMINI_API_KEY", "gemini-2.5-flash"),
     "ollama": ("http://localhost:11434/v1", None, "llama3.2"),
 }
@@ -32,7 +36,8 @@ Rules:
 - ALWAYS call a tool to get real conditions before giving advice. Never invent AQI or temperature numbers.
 - If the user names a place, call find_place first if you are unsure of its coordinates, then school_conditions.
 - Use the verdicts the tool returns (Go / Go with care / Limit / Move indoors / Stay home); do not override them.
-- Be short and practical: bullet points, concrete times, what to do instead.
+- Be short and practical: at most 8 plain bullet points ("- "), concrete times, what to do instead.
+- Plain text only: no tables, no headings, no bold or other markdown.
 - Mention children with asthma or other sensitivities when air is Moderate or worse.
 - Reply in the user's language. If they write in Hindi or Hinglish, reply in simple Hindi.
 - You are not a doctor; for symptoms like breathlessness or heatstroke tell them to seek medical help (108).
