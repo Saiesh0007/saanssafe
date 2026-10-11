@@ -10,7 +10,6 @@ const CITIES = [
   { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
   { name: "Bengaluru", lat: 12.9716, lon: 77.5946 },
 ];
-const EMOJI = ["🟢", "🟢", "🟠", "🔴", "⛔"];
 const HEADLINE = {
   en: ["All clear for outdoor activities", "Outdoors is fine, with care", "Limit time outdoors", "Move outdoor exertion indoors", "Consider closing / going online"],
   hi: ["बाहरी गतिविधियाँ ठीक हैं", "सावधानी के साथ बाहर ठीक", "बाहर का समय सीमित करें", "मेहनत वाली गतिविधि अंदर करें", "स्कूल बंद / ऑनलाइन पर विचार करें"],
@@ -79,15 +78,15 @@ async function load(place) {
   state.place = place;
   const sensitive = $("#sensitive").checked;
   $("#result").hidden = false;
-  $("#banner").className = "banner lv1";
-  $("#banner").innerHTML = `<div class="big">${t("Checking the air and heat…", "हवा और गर्मी देख रहे हैं…")}</div>`;
+  $("#banner").className = "verdict-panel tilt loading lv1";
+  $("#banner").innerHTML = `<div class="ring">${ring(0)}<div class="val"><b>…</b></div></div><div><div class="kicker">${esc(place.name)}</div><div class="big">${t("Checking the air and heat…", "हवा और गर्मी देख रहे हैं…")}</div></div>`;
+  requestAnimationFrame(() => $("#result").scrollIntoView({ behavior: "smooth", block: "start" }));
   try {
     state.report = await fetchReport(place, sensitive);
     state.day = 0;
     render();
-    $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
-    $("#banner").className = "banner lv3";
+    $("#banner").className = "verdict-panel lv3";
     $("#banner").innerHTML = `<div class="big">${esc(e.message)}</div>`;
   }
 }
@@ -106,17 +105,27 @@ function render() {
   $("#tabs").innerHTML = r.days.map((x, i) => `<button role="tab" class="${i === state.day ? "on" : ""}" data-i="${i}">${dayLabel(i, x.date)}</button>`).join("");
 
   const lv = d.overall_level;
-  $("#banner").className = `banner lv${lv}`;
-  $("#banner").innerHTML = `<div class="emoji">${EMOJI[lv]}</div><div><div class="big">${HEADLINE[state.lang][lv]}</div>
-    <div>${t("Worst during school hours (7 am - 3 pm)", "स्कूल समय (सुबह 7 - दोपहर 3) में सबसे खराब स्थिति")}</div></div>`;
+  $("#banner").className = `verdict-panel tilt lv${lv}`;
+  $("#banner").innerHTML = `<div class="ring">${ring(d.peak_aqi / 500)}<div class="val"><b data-count="${d.peak_aqi}">0</b><span>AQI</span></div></div>
+    <div><div class="kicker">${esc(state.lang === "hi" ? d.overall_hi : d.overall)} · ${dayLabel(state.day, d.date)}</div>
+    <div class="big">${HEADLINE[state.lang][lv]}</div>
+    <div class="small">${reasonLine(d)}</div></div>`;
+  requestAnimationFrame(() => { const fg = $("#banner .fg"); if (fg) fg.style.strokeDashoffset = fg.dataset.to; });
 
-  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (India)", "अधिकतम AQI")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}">${d.peak_aqi}</div><div class="c">${d.aqi_category}</div>`;
-  $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v">${d.peak_feels_like}°</div><div class="c">${d.heat_category}</div>`;
-  $("#statUv").innerHTML = `<div class="k">${t("Max UV", "अधिकतम UV")}</div><div class="v">${Math.round(d.max_uv)}</div><div class="c">${d.max_uv >= 8 ? t("Very high", "बहुत अधिक") : d.max_uv >= 6 ? t("High", "अधिक") : t("Moderate/low", "मध्यम/कम")}</div>`;
+  const heatPct = Math.max(0, Math.min(1, (d.peak_feels_like - 20) / 35));
+  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (India)", "अधिकतम AQI")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${d.aqi_category}</div>
+    <div class="bar"><i style="background:${aqiColor(d.peak_aqi)}" data-w="${Math.min(100, d.peak_aqi / 5)}"></i></div>`;
+  $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${d.heat_category}</div>
+    <div class="bar"><i style="background:linear-gradient(90deg,#facc15,#f97316,#ef4444)" data-w="${heatPct * 100}"></i></div>`;
+  $("#statUv").innerHTML = `<div class="k">${t("Max UV", "अधिकतम UV")}</div><div class="v" data-count="${Math.round(d.max_uv)}">0</div><div class="c">${d.max_uv >= 8 ? t("Very high", "बहुत अधिक") : d.max_uv >= 6 ? t("High", "अधिक") : t("Moderate/low", "मध्यम/कम")}</div>
+    <div class="bar"><i style="background:linear-gradient(90deg,#a3e635,#facc15,#a21caf)" data-w="${Math.min(100, d.max_uv * 9)}"></i></div>`;
+  requestAnimationFrame(() => document.querySelectorAll(".bar i[data-w]").forEach((b) => (b.style.width = b.dataset.w + "%")));
+  countUp();
+  if (window.SaansScene) window.SaansScene.set({ aqi: d.peak_aqi, feels: d.peak_feels_like });
 
   $("#decHead").textContent = t(`Decisions for ${dayLabel(state.day, d.date).toLowerCase()}`, `${dayLabel(state.day, d.date)} के निर्णय`);
-  $("#cards").innerHTML = d.activities.map((a) => `
-    <div class="act b${a.level}">
+  $("#cards").innerHTML = d.activities.map((a, i) => `
+    <div class="act tilt b${a.level}" style="--i:${i}">
       <div class="t">${esc(state.lang === "hi" ? a.name_hi : a.name)}</div><div class="w">${a.window}</div>
       <div class="verdict t${a.level}">${esc(state.lang === "hi" ? a.verdict_hi : a.verdict)}</div>
       <div class="a">${esc(state.lang === "hi" ? a.action_hi : a.action)}</div>
@@ -126,6 +135,37 @@ function render() {
   renderChart(d.hourly);
   $("#tips").innerHTML = d.tips.map((x) => `<li>${esc(x)}</li>`).join("");
   renderNotice();
+}
+
+// Which of air or heat drives the day's worst verdict, so the AQI ring never looks contradictory.
+function reasonLine(d) {
+  const worst = d.activities.reduce((a, b) => (b.level > a.level ? b : a), d.activities[0]);
+  const hours = t("during school hours", "स्कूल समय में");
+  if (!worst || !worst.driver) return t("Conditions are fine all through school hours (7 am - 3 pm)", "पूरे स्कूल समय (सुबह 7 - दोपहर 3) स्थिति ठीक है");
+  return worst.driver === "heat"
+    ? t(`Driven by heat: feels like ${d.peak_feels_like}°C ${hours}`, `कारण: गर्मी - ${hours} महसूस तापमान ${d.peak_feels_like}°C`)
+    : t(`Driven by air: AQI up to ${d.peak_aqi} ${hours}`, `कारण: हवा - ${hours} AQI ${d.peak_aqi} तक`);
+}
+
+// SVG ring gauge; the foreground stroke animates from empty to `frac`.
+function ring(frac) {
+  const C = 2 * Math.PI * 52, to = C * (1 - Math.max(0.02, Math.min(1, frac)));
+  return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52" fill="none" stroke-width="10"/>
+    <circle class="fg" cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-to="${to}"/></svg>`;
+}
+
+function countUp() {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("[data-count]").forEach((el) => {
+    const end = +el.dataset.count, dec = +(el.dataset.dec || 0), t0 = performance.now(), dur = 1100;
+    if (reduced) return (el.textContent = end.toFixed(dec));
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = (end * e).toFixed(dec);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
 }
 
 function renderChart(hours) {
@@ -138,12 +178,12 @@ function renderChart(hours) {
   const yA = (v) => H - P.b - (v / maxA) * (H - P.t - P.b);
   const yT = (v) => H - P.b - ((v - tMin) / (tMax - tMin)) * (H - P.t - P.b);
   const school = `<rect x="${x(7)}" y="${P.t}" width="${bw * 9}" height="${H - P.t - P.b}" fill="currentColor" opacity=".06"/>`;
-  const bars = hours.map((h) => `<rect x="${x(h.hour) + 2}" y="${yA(h.aqi)}" width="${bw - 4}" height="${H - P.b - yA(h.aqi)}" rx="2" fill="${aqiColor(h.aqi)}"><title>${String(h.hour).padStart(2, "0")}:00 · AQI ${h.aqi} · ${h.feels_like}°C</title></rect>`).join("");
+  const bars = hours.map((h) => `<rect class="b" style="animation-delay:${h.hour * 25}ms" x="${x(h.hour) + 2}" y="${yA(h.aqi)}" width="${bw - 4}" height="${H - P.b - yA(h.aqi)}" rx="2" fill="${aqiColor(h.aqi)}"><title>${String(h.hour).padStart(2, "0")}:00 · AQI ${h.aqi} · ${h.feels_like}°C</title></rect>`).join("");
   const line = hours.map((h, i) => `${i ? "L" : "M"}${x(h.hour) + bw / 2},${yT(h.feels_like)}`).join(" ");
   const ticks = [0, 6, 7, 12, 15, 18, 23].map((hr) => `<text x="${x(hr) + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6">${hr}h</text>`).join("");
   const aTicks = [100, 200, 300].filter((v) => v <= maxA).map((v) => `<line x1="${P.l}" x2="${W - P.r}" y1="${yA(v)}" y2="${yA(v)}" stroke="currentColor" opacity=".12"/><text x="${P.l - 4}" y="${yA(v) + 4}" text-anchor="end" font-size="10" fill="currentColor" opacity=".6">${v}</text>`).join("");
   $("#chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly AQI bars and feels-like temperature line">${school}${aTicks}${bars}
-    <path d="${line}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>${ticks}
+    <path class="ln" d="${line}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>${ticks}
     <text x="${W - P.r + 4}" y="${yT(tMax - 2) + 4}" font-size="10" fill="currentColor" opacity=".7">${Math.round(tMax - 2)}°</text>
     <text x="${W - P.r + 4}" y="${yT(tMin + 2) + 4}" font-size="10" fill="currentColor" opacity=".7">${Math.round(tMin + 2)}°</text></svg>
     <div class="lg"><span><i class="sw" style="background:#eab308"></i>${t("Bars: AQI (CPCB colours)", "बार: AQI")}</span><span>━ ${t("Line: feels-like °C", "रेखा: महसूस तापमान")}</span><span><i class="sw" style="background:currentColor;opacity:.2"></i>${t("School hours", "स्कूल समय")}</span></div>`;
@@ -220,10 +260,28 @@ $("#askForm").addEventListener("submit", async (e) => {
     const p = state.place || {};
     const res = await api("/api/ask", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q, place: p.name, lat: p.lat, lon: p.lon, sensitive: $("#sensitive").checked }),
+      body: JSON.stringify({ question: q, place: p.name, lat: p.lat, lon: p.lon, sensitive: $("#sensitive").checked, lang: state.lang }),
     });
     box.className = "answer"; box.textContent = res.answer.replace(/\*\*/g, "");
   } catch (err) { box.className = "answer"; box.textContent = err.message; }
 });
+
+// 3D tilt that follows the pointer (desktop only), and scroll reveals
+if (matchMedia("(hover: hover) and (prefers-reduced-motion: no-preference)").matches) {
+  document.addEventListener("pointermove", (e) => {
+    const el = e.target.closest(".tilt");
+    document.querySelectorAll(".tilting").forEach((x) => x !== el && x.classList.remove("tilting"));
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+    const max = el.classList.contains("verdict-panel") ? 4 : 9;
+    el.style.setProperty("--ry", `${px * max}deg`);
+    el.style.setProperty("--rx", `${-py * max}deg`);
+    el.classList.add("tilting");
+  }, { passive: true });
+  document.addEventListener("pointerleave", () => document.querySelectorAll(".tilting").forEach((x) => x.classList.remove("tilting")));
+}
+const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.12 }) : null;
+document.querySelectorAll(".reveal").forEach((el, i) => { el.style.transitionDelay = `${Math.min(i, 6) * 70}ms`; io ? io.observe(el) : el.classList.add("in"); });
 
 applyLang();

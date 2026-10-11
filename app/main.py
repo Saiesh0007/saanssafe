@@ -69,6 +69,7 @@ class AskBody(BaseModel):
     lat: float | None = None
     lon: float | None = None
     sensitive: bool = False
+    lang: str = "en"
 
 
 @app.post("/api/ask")
@@ -76,8 +77,9 @@ def ask(body: AskBody):
     if not agent.is_enabled():
         raise HTTPException(503, "The AI advisor is not configured on this server. The dashboard still works.")
     ctx = body.model_dump() if body.lat is not None else None
+    reply_in = "Hindi (Devanagari)" if body.lang == "hi" else "English"
     try:
-        return {"answer": agent.ask(body.question, ctx)}
+        return {"answer": agent.ask(f"{body.question}\n[Reply in {reply_in}.]", ctx)}
     except Exception as e:  # surface model/provider errors to the UI instead of a blank 500
         raise HTTPException(502, f"Advisor error: {e}")
 
