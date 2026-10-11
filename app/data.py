@@ -34,11 +34,11 @@ def geocode(query: str) -> list[dict]:
     r = httpx.get(GEOCODE_URL, params={"name": query, "count": 6, "language": "en"}, timeout=15)
     r.raise_for_status()
     results = r.json().get("results") or []
-    # Prefer Indian results - this is built for Indian schools first.
-    results.sort(key=lambda x: x.get("country_code") != "IN")
+    # Indian places first, then by population, so "Kolhapur" means the city, not a same-named village.
+    results.sort(key=lambda x: (x.get("country_code") != "IN", -(x.get("population") or 0)))
     if not results:
         return _nominatim(query)
-    return [
+    return _dedupe([
         {
             "name": x["name"],
             "admin": ", ".join(p for p in (x.get("admin2"), x.get("admin1"), x.get("country")) if p),
@@ -46,7 +46,17 @@ def geocode(query: str) -> list[dict]:
             "lon": x["longitude"],
         }
         for x in results
-    ]
+    ])
+
+
+def _dedupe(places: list[dict]) -> list[dict]:
+    seen, out = set(), []
+    for p in places:
+        key = (p["name"].lower(), p["admin"].lower())
+        if key not in seen:
+            seen.add(key)
+            out.append(p)
+    return out
 
 
 def _nominatim(query: str) -> list[dict]:
@@ -72,7 +82,7 @@ def _nominatim(query: str) -> list[dict]:
 def _fetch(lat: float, lon: float) -> tuple[dict, dict]:
     common = {"latitude": lat, "longitude": lon, "timezone": "auto", "forecast_days": 4}
     with httpx.Client(timeout=20) as c:
-        air = c.get(AIR_URL, params={**common, "hourly": "pm2_5,pm10"})
+        air = c.get(AIR_URL, params={**common, "hourly": "pm2_5,pm10,us_aqi"})
         wx = c.get(
             WEATHER_URL,
             params={**common, "hourly": "temperature_2m,relative_humidity_2m,apparent_temperature,uv_index"},
@@ -101,6 +111,7 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
     days: dict[str, list[dict]] = defaultdict(list)
     for i, t in enumerate(ah["time"]):
         pm25, pm10 = ah["pm2_5"][i], ah["pm10"][i]
+        us = (ah.get("us_aqi") or [None] * len(ah["time"]))[i]
         w = weather_by_time.get(t)
         if w is None or (pm25 is None and pm10 is None) or w[2] is None:
             continue
@@ -111,6 +122,7 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
             "pm25": pm25,
             "pm10": pm10,
             "aqi": a["aqi"],
+            "us_aqi": us,
             "dominant": a["dominant"],
             "temp": w[0],
             "rh": w[1],
@@ -130,6 +142,7 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
         out_days.append({
             "date": date,
             "peak_aqi": peak_aqi,
+            "peak_us_aqi": max((h["us_aqi"] or 0) for h in school) or None,
             "aqi_category": rules.aqi_category(peak_aqi),
             "peak_feels_like": round(peak_heat, 1),
             "heat_category": rules.heat_category(peak_heat),
@@ -150,9 +163,9 @@ def school_report(lat: float, lon: float, place: str = "", sensitive: bool = Fal
         "lon": lon,
         "timezone": air.get("timezone"),
         "sensitive": sensitive,
-        "generated_at": now_iso or time.strftime("%Y-%m-%dT%H:%M"),
+        "generated_at": now_iso or time.strftime("%Y-%m-%dT%H:%M", time.gmtime(time.time() + wx.get("utc_offset_seconds", 0))),
         "days": out_days,
-        "source": "Open-Meteo (CAMS air quality + weather forecast); AQI per CPCB breakpoints on hourly PM2.5/PM10",
+        "source": "Copernicus CAMS forecast via Open-Meteo (~40 km grid). Indian AQI uses CPCB breakpoints on hourly PM2.5/PM10; US AQI is shown because most apps use that scale.",
     }
 
 

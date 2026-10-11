@@ -47,7 +47,7 @@ async function fetchReport(place, sensitive) {
   const common = `latitude=${place.lat}&longitude=${place.lon}&timezone=auto&forecast_days=4`;
   try {
     const [air, wx] = await Promise.all([
-      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&hourly=pm2_5,pm10`).then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&hourly=pm2_5,pm10,us_aqi`).then((r) => (r.ok ? r.json() : Promise.reject())),
       fetch(`https://api.open-meteo.com/v1/forecast?${common}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,uv_index`).then((r) => (r.ok ? r.json() : Promise.reject())),
     ]);
     return await api("/api/report", {
@@ -60,6 +60,8 @@ async function fetchReport(place, sensitive) {
 }
 
 // Place search: server first, then the same free geocoders straight from the browser.
+const dedupe = (list) => list.filter((p, i) => list.findIndex((o) => o.name === p.name && o.admin === p.admin) === i);
+
 async function searchPlaces(q) {
   try {
     const res = await api(`/api/places?q=${encodeURIComponent(q)}`);
@@ -67,8 +69,8 @@ async function searchPlaces(q) {
   } catch {}
   const om = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6`).then((r) => r.json()).catch(() => ({}));
   if (om.results?.length) {
-    om.results.sort((a, b) => (a.country_code !== "IN") - (b.country_code !== "IN"));
-    return om.results.map((x) => ({ name: x.name, admin: [x.admin2, x.admin1, x.country].filter(Boolean).join(", "), lat: x.latitude, lon: x.longitude }));
+    om.results.sort((a, b) => (a.country_code !== "IN") - (b.country_code !== "IN") || (b.population || 0) - (a.population || 0));
+    return dedupe(om.results.map((x) => ({ name: x.name, admin: [x.admin2, x.admin1, x.country].filter(Boolean).join(", "), lat: x.latitude, lon: x.longitude })));
   }
   const nm = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&limit=6&countrycodes=in`).then((r) => r.json()).catch(() => []);
   return nm.map((x) => ({ name: x.display_name.split(",")[0], admin: x.display_name.split(",").slice(1, 4).join(",").trim(), lat: +x.lat, lon: +x.lon }));
@@ -113,7 +115,7 @@ function render() {
   requestAnimationFrame(() => { const fg = $("#banner .fg"); if (fg) fg.style.strokeDashoffset = fg.dataset.to; });
 
   const heatPct = Math.max(0, Math.min(1, (d.peak_feels_like - 20) / 35));
-  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (India)", "अधिकतम AQI")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${d.aqi_category}</div>
+  $("#statAir").innerHTML = `<div class="k">${t("Peak AQI (India)", "अधिकतम AQI")}</div><div class="v" style="color:${aqiColor(d.peak_aqi)}" data-count="${d.peak_aqi}">0</div><div class="c">${d.aqi_category}${d.peak_us_aqi ? ` <span class="us">· ${t("US scale", "US स्केल")} ${d.peak_us_aqi}</span>` : ""}</div>
     <div class="bar"><i style="background:${aqiColor(d.peak_aqi)}" data-w="${Math.min(100, d.peak_aqi / 5)}"></i></div>`;
   $("#statHeat").innerHTML = `<div class="k">${t("Feels like", "महसूस तापमान")}</div><div class="v"><span data-count="${d.peak_feels_like}" data-dec="1">0</span>°</div><div class="c">${d.heat_category}</div>
     <div class="bar"><i style="background:linear-gradient(90deg,#facc15,#f97316,#ef4444)" data-w="${heatPct * 100}"></i></div>`;
@@ -121,7 +123,7 @@ function render() {
     <div class="bar"><i style="background:linear-gradient(90deg,#a3e635,#facc15,#a21caf)" data-w="${Math.min(100, d.max_uv * 9)}"></i></div>`;
   requestAnimationFrame(() => document.querySelectorAll(".bar i[data-w]").forEach((b) => (b.style.width = b.dataset.w + "%")));
   countUp();
-  if (window.SaansScene) window.SaansScene.set({ aqi: d.peak_aqi, feels: d.peak_feels_like });
+  document.documentElement.style.setProperty("--sky", aqiColor(d.peak_aqi));
 
   $("#decHead").textContent = t(`Decisions for ${dayLabel(state.day, d.date).toLowerCase()}`, `${dayLabel(state.day, d.date)} के निर्णय`);
   $("#cards").innerHTML = d.activities.map((a, i) => `

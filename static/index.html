@@ -13,7 +13,6 @@
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<canvas id="sky" aria-hidden="true"></canvas>
 <div class="skytint" aria-hidden="true"></div>
 
 <header class="top">
@@ -43,10 +42,6 @@
     </div>
     <div class="chips reveal" id="chips"></div>
 
-    <div class="legend reveal" aria-hidden="true">
-      <span><i class="lgdot haze"></i><span data-en="Haze = air quality" data-hi="धुंध = हवा">Haze = air quality</span></span>
-      <span><i class="lgdot sun"></i><span data-en="Sun = heat" data-hi="सूरज = गर्मी">Sun = heat</span></span>
-    </div>
   </section>
 
   <section id="result" hidden>
@@ -65,6 +60,8 @@
       <div class="stat glass tilt" id="statHeat"></div>
       <div class="stat glass tilt" id="statUv"></div>
     </div>
+    <p class="meta source" data-en="Forecast: Copernicus CAMS model via Open-Meteo (~40 km grid), so it can differ from the nearest CPCB station. Most apps show the US scale, which reads about twice as high for the same air."
+       data-hi="पूर्वानुमान: Copernicus CAMS मॉडल (~40 किमी ग्रिड) - निकटतम CPCB स्टेशन से अलग हो सकता है। अधिकतर ऐप US स्केल दिखाते हैं, जो उसी हवा के लिए लगभग दोगुना होता है।">Forecast: Copernicus CAMS model via Open-Meteo (~40 km grid), so it can differ from the nearest CPCB station. Most apps show the US scale, which reads about twice as high for the same air.</p>
 
     <h2 id="decHead">Decisions</h2>
     <div class="cards" id="cards"></div>
@@ -116,8 +113,6 @@
 </main>
 
 <footer>Built for WeMakeDevs Environmental Hacks · Agent on <a href="https://strandsagents.com" target="_blank" rel="noopener">AWS Strands Agents SDK</a> · Data: Open-Meteo, OpenStreetMap</footer>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-<script src="/static/scene.js" defer></script>
 <script src="/static/app.js" defer></script>
 </body>
 </html>
